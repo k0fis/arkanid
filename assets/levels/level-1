@@ -1,0 +1,12 @@
+{
+"brickWidth": 48,
+"brickHeight": 20,
+"padding": 4,
+"startX": 30,
+"startY": 520,
+"bricks": [
+{ "row": 0, "col": 0, "hp": 1 },
+{ "row": 0, "col": 1, "hp": 2 },
+{ "row": 1, "col": 5, "hp": 1 }
+]
+}
