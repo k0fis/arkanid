@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="2048" height="2048" viewBox="0 0 2048 2048" xmlns="http://www.w3.org/2000/svg" version="1.1" shape-rendering="geometricPrecision" text-rendering="optimizeLegibility">
+  <defs>
+    <radialGradient id="bgGrad" cx="50%" cy="40%" r="75%">
+      <stop offset="0%" stop-color="#0b2a4a"/>
+      <stop offset="55%" stop-color="#081e36"/>
+      <stop offset="100%" stop-color="#020912"/>
+    </radialGradient>
+
+    <linearGradient id="gradBlue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00e5ff"/>
+      <stop offset="100%" stop-color="#0066ff"/>
+    </linearGradient>
+    <linearGradient id="gradOrange" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffb703"/>
+      <stop offset="100%" stop-color="#ff3b00"/>
+    </linearGradient>
+
+    <linearGradient id="titleOrange" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffd166"/>
+      <stop offset="100%" stop-color="#ff7f11"/>
+    </linearGradient>
+    <linearGradient id="titleBlue" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7ad7ff"/>
+      <stop offset="100%" stop-color="#1a73ff"/>
+    </linearGradient>
+
+    <linearGradient id="brickHighlight" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="35%" stop-color="#ffffff" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+
+    <filter id="glowBlue" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="glowOrange" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="7" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feOffset dx="0" dy="8" in="SourceAlpha" result="off"/>
+      <feGaussianBlur in="off" stdDeviation="10" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .55 0" result="shadow"/>
+      <feMerge>
+        <feMergeNode in="shadow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <radialGradient id="vignette" cx="50%" cy="50%" r="70%">
+      <stop offset="60%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.35"/>
+    </radialGradient>
+
+    <style>
+      .titleText {
+        font-family: "Impact","Arial Black","Russo One","Audiowide","Orbitron","Helvetica Neue",Arial,sans-serif;
+        letter-spacing: 0.04em;
+      }
+      .center {
+        text-anchor: middle;
+        dominant-baseline: middle;
+      }
+    </style>
+  </defs>
+
+
+
+  <g id="bricks">
+    <g transform="translate(0,0)">
+      <g><rect x="368" y="280" width="150" height="44" rx="6" fill="url(#gradOrange)" filter="url(#glowOrange)"/><rect x="368" y="280" width="150" height="18" rx="6" fill="url(#brickHighlight)"/></g>
+      <g><rect x="866" y="280" width="150" height="44" rx="6" fill="url(#gradBlue)" filter="url(#glowBlue)"/><rect x="866" y="280" width="150" height="18" rx="6" fill="url(#brickHighlight)"/></g>
+
+    </g>
+  </g>
+
+
+</svg>

@@ -1,90 +1,83 @@
 package kfs.arkanoid;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.utils.JsonReader;
-import com.badlogic.gdx.utils.JsonValue;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import kfs.arkanoid.comp.*;
 import kfs.arkanoid.ecs.Entity;
 import kfs.arkanoid.ecs.KfsWorld;
+import kfs.arkanoid.outp.MusicManager;
 import kfs.arkanoid.sys.*;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
+import java.util.function.Consumer;
 
 public class World extends KfsWorld {
     private static final String PARTICLE = "particle";
     private static final String BALL = "ball";
     private static final String BRICK = "brick";
     private static final String PADDLE = "paddle";
+    private static final String SURPRISE_1 = "surprise-1";
+    private static final String SURPRISE_2 = "surprise-2";
+    private static final String SURPRISE_3 = "surprise-3";
+
+
+    private static final int BRICK_TOP = 85;
+    public static final int BRICK_WIDTH = 48;
+    private static final int BRICK_HEIGHT = 20;
+    private static final int BRICK_SPACE = 4;
+    private static final int BALL_SIZE = 12;
+
+    private final Random random = new Random();
 
     private final Map<String, Texture> textures;
 
-    private float height;
-    private float width;
+    private final float height;
+    private final float width;
+    private final Consumer<String> gameOverAction;
+    private final Consumer<String> setInfoAction;
+    private final Runnable pauseAction;
+    private boolean gameOver1 = false;
+    private boolean level1 = false;
+    private final BrickTextAnimationSystem brickTextAnimationSystem;
 
-    public World(float width, float height) {
+    public World(float width, float height, MusicManager music,
+                 Consumer<String> gameOver, Consumer<String> setInfoAction, Runnable pauseAction) {
         this.textures = new HashMap<>();
         this.height = height;
         this.width = width;
+        this.gameOverAction = gameOver;
+        this.setInfoAction = setInfoAction;
+        this.pauseAction = pauseAction;
 
         textures.put(PARTICLE, generateParticle(5));
-        textures.put(BALL, generateBall(12));
-        textures.put(BRICK, generateBrick(48, 20, Color.RED));
-        textures.put(PADDLE, generatePaddle(80, 16));
+        textures.put(BALL, new Texture(Gdx.files.internal("textures/ball.png")));
+        textures.put(BRICK+"_1", new Texture(Gdx.files.internal("textures/brick-orange.png")));
+        textures.put(BRICK+"_2", new Texture(Gdx.files.internal("textures/brick-blue.png")));
+        textures.put(PADDLE, new Texture(Gdx.files.internal("textures/paddle.png")));
+        textures.put(SURPRISE_1, new Texture(Gdx.files.internal("textures/surprise-1.png")));
+        textures.put(SURPRISE_2, new Texture(Gdx.files.internal("textures/surprise-2.png")));
+        textures.put(SURPRISE_3, new Texture(Gdx.files.internal("textures/surprise-3.png")));
 
-
-        addSys(new CollisionSystem(this));
+        addSys(new CollisionSystem(this, music));
+        addSys(new LevelCheckerSystem(this));
         addSys(new MovementSystem(this));
         addSys(new PaddleInputSystem(this));
         addSys(new ParticleSystem(this));
         addSys(new RenderSystem(this));
+        addSys(new SurpriseActiveSystem(this));
         addSys(new WorldBoundsSystem(this));
 
-        createPaddle(width / 2f - 40, 40, 80, 16);
-        createBall( width / 2f, height / 2f, 12);
+        createPaddle();
+        createBall(false);
 
-        // bricks grid
-        float brickW = 48;
-        float brickH = 20;
-        float startX = 30;
-        float startY = height - 80;
+        brickTextAnimationSystem = new BrickTextAnimationSystem(this);
 
-        for (int row = 0; row < 5; row++) {
-            for (int col = 0; col < 10; col++) {
-                float x = startX + col * (brickW + 4);
-                float y = startY - row * (brickH + 4);
-                createBrick(x, y, brickW, brickH, 1);
-            }
-        }
-    }
-
-    public void load(String jsonPath) {
-        for (Entity e : getEntitiesWith(BrickComponent.class)) deleteEntity(e);
-
-        FileHandle file = Gdx.files.internal(jsonPath);
-        JsonValue root = new JsonReader().parse(file);
-
-        float brickW = root.getFloat("brickWidth");
-        float brickH = root.getFloat("brickHeight");
-        float padding = root.getFloat("padding");
-        float startX = root.getFloat("startX");
-        float startY = root.getFloat("startY");
-
-        JsonValue bricks = root.get("bricks");
-        for (JsonValue brick : bricks) {
-            int row = brick.getInt("row");
-            int col = brick.getInt("col");
-            int hp = brick.getInt("hp", 1);
-
-            float x = startX + col * (brickW + padding);
-            float y = startY - row * (brickH + padding);
-
-            createBrick(x, y, brickW, brickH, hp);
-        }
+        newWall();
     }
 
     @Override
@@ -101,44 +94,59 @@ public class World extends KfsWorld {
         return out;
     }
 
-    public float getHeight() {
-        return height;
-    }
-
-    public float getWidth() {
-        return width;
-    }
-
-    public void setSize(float width, float height) {
-        this.width = width;
-        this.height = height;
-    }
-
-    public void createPaddle(float x, float y, float w, float h) {
+    public void createPaddle() {
+        for (Entity e : getEntitiesWith(PaddleComponent.class)) {
+            deleteEntity(e);
+        }
         Entity e = createEntity();
-        addComponent(e, new PositionComponent(x,y));
-        addComponent(e, new SizeComponent(w, h));
+        addComponent(e, new PositionComponent(width / 2f - 40, 40));
+        addComponent(e, new SizeComponent(80, 16));
         addComponent(e, new VelocityComponent());
         addComponent(e, new PaddleComponent());
-        addComponent(e, new RenderComponent("paddle"));
+        addComponent(e, new RenderComponent(PADDLE));
     }
 
-    public void createBall(float x, float y, float size) {
+    public void createBall(boolean removeOld) {
+        if (removeOld) {
+            for (Entity e : getEntitiesWith(BallComponent.class)) {
+                deleteEntity(e);
+            }
+        }
         Entity e = createEntity();
-        addComponent(e, new PositionComponent(x,y));
-        addComponent(e, new SizeComponent(size, size));
+        addComponent(e, new PositionComponent(width / 2f,height / 2f));
+        addComponent(e, new SizeComponent(BALL_SIZE, BALL_SIZE));
         addComponent(e, new VelocityComponent(150, 150));
         addComponent(e, new BallComponent());
-        addComponent(e, new BounceComponent());
-        addComponent(e, new RenderComponent("ball"));
+        addComponent(e, new RenderComponent(BALL));
     }
 
-    public void createBrick(float x, float y, float w, float h, int hp) {
+    public void createSurprise1(float x, float y) {
+        createSurprise(x,y, 24, 19, SURPRISE_1, 1);
+    }
+
+    public void createSurprise2(float x, float y) {
+        createSurprise(x,y, 24, 21, SURPRISE_2, 2);
+    }
+
+    public void createSurprise3(float x, float y) {
+        createSurprise(x,y, 24, 21, SURPRISE_3, 3);
+    }
+
+    public void createSurprise(float x, float y, float width, float height, String texture, int inx) {
+        Entity e = createEntity();
+        addComponent(e, new PositionComponent(x,y));
+        addComponent(e, new SizeComponent(width, height));
+        addComponent(e, new VelocityComponent(0, -200));
+        addComponent(e, new SurpriseComponent(inx));
+        addComponent(e, new RenderComponent(texture));
+    }
+
+    public void createBrick(float x, float y, float w, float h, int hp, String renderName) {
         Entity e = createEntity();
         addComponent(e, new PositionComponent(x,y));
         addComponent(e, new SizeComponent(w, h));
-        addComponent(e, new BrickComponent(hp));
-        addComponent(e, new RenderComponent("brick"));
+        addComponent(e, new BrickComponent(hp, random.nextInt(20)));
+        addComponent(e, new RenderComponent(renderName));
     }
 
     public void spawnBurst(float x, float y, int count) {
@@ -163,36 +171,6 @@ public class World extends KfsWorld {
     }
 
 
-    Texture generateBall(int size) {
-        Pixmap pm = new Pixmap(size, size, Pixmap.Format.RGBA8888);
-        pm.setColor(Color.WHITE);
-        pm.fillCircle(size/2, size/2, size/2);
-        Texture tex = new Texture(pm);
-        pm.dispose();
-        return tex;
-    }
-
-    public static Texture generateBrick(int w, int h, Color color) {
-        Pixmap pm = new Pixmap(w, h, Pixmap.Format.RGBA8888);
-        pm.setColor(color);
-        pm.fillRectangle(0, 0, w, h);
-        pm.setColor(Color.BLACK);
-        pm.drawRectangle(0, 0, w, h);
-        Texture tex = new Texture(pm);
-        pm.dispose();
-        return tex;
-    }
-
-    public static Texture generatePaddle(int w, int h) {
-        Pixmap pm = new Pixmap(w, h, Pixmap.Format.RGBA8888);
-        pm.setColor(Color.GRAY);
-        pm.fillRectangle(0, 0, w, h);
-        pm.setColor(Color.DARK_GRAY);
-        pm.drawRectangle(0, 0, w, h);
-        Texture tex = new Texture(pm);
-        pm.dispose();
-        return tex;
-    }
 
     public static Texture generateParticle(int size) {
         Pixmap pm = new Pixmap(size, size, Pixmap.Format.RGBA8888);
@@ -201,5 +179,88 @@ public class World extends KfsWorld {
         Texture tex = new Texture(pm);
         pm.dispose();
         return tex;
+    }
+
+    public void newWall() {
+        int colCount = (int)(width / (BRICK_WIDTH  + BRICK_SPACE)) - 1;
+        int rowCount = 3+random.nextInt(5);
+
+        float startX = (width - colCount * (BRICK_WIDTH  + BRICK_SPACE)) /2f;
+        float startY = height - BRICK_TOP;
+
+        int brickInx = 0;
+        for (int row = 0; row < rowCount; row++) {
+            for (int col = 0; col < colCount; col++) {
+                float x = startX + col * (BRICK_WIDTH + BRICK_SPACE);
+                float y = startY - row * (BRICK_HEIGHT + BRICK_SPACE);
+                createBrick(x, y, BRICK_WIDTH, BRICK_HEIGHT,
+                    1+random.nextInt(4),
+                    (brickInx%2==0)?BRICK+"_1":BRICK+"_2");
+                brickInx++;
+            }
+        }
+    }
+
+    @Override
+    public void update(float delta) {
+        if (gameOver1 || level1) {
+            brickTextAnimationSystem.update(delta);
+        } else {
+            super.update(delta);
+        }
+        if (brickTextAnimationSystem.isTimeout(6f)) {
+            if (gameOver1) {
+                for (Entity brick : getEntitiesWith(BrickComponent.class)) {
+                    deleteEntity(brick);
+                }
+                createPaddle();
+                createBall(true);
+                newWall();
+                gameOverAction.accept("Game Over");
+            }
+            if (level1) {
+                createBall(true);
+                for (Entity paddleEntity : getEntitiesWith(PaddleComponent.class)) {
+                    PositionComponent pc = getComponent(paddleEntity, PositionComponent.class);
+                    pc.position.x = width / 2f - 40;
+                    pc.position.y = 40;
+                }
+                newWall();
+                pauseAction.run();
+            }
+            gameOver1 = false;
+            level1 = false;
+        }
+    }
+
+    @Override
+    public void render(SpriteBatch batch) {
+        if (gameOver1 || level1) {
+            brickTextAnimationSystem.render(batch);
+        } else {
+            super.render(batch);
+        }
+    }
+
+    public void setInfo(String info) {
+        setInfoAction.accept(info);
+    }
+
+    public void gameOver() {
+        this.gameOver1 = true;
+        brickTextAnimationSystem.setMessage("Game Over");
+    }
+
+    public void newLevel() {
+        this.level1 = true;
+        brickTextAnimationSystem.setMessage("Level done");
+    }
+
+    public float getWidth() {
+        return width;
+    }
+
+    public float getHeight() {
+        return height;
     }
 }

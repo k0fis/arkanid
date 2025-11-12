@@ -1,12 +1,9 @@
 package kfs.arkanoid.sys;
 
 import kfs.arkanoid.World;
-import kfs.arkanoid.comp.PositionComponent;
-import kfs.arkanoid.comp.SizeComponent;
-import kfs.arkanoid.comp.VelocityComponent;
+import kfs.arkanoid.comp.*;
 import kfs.arkanoid.ecs.Entity;
 import kfs.arkanoid.ecs.KfsSystem;
-import kfs.arkanoid.ecs.KfsWorld;
 
 public class WorldBoundsSystem implements KfsSystem {
 
@@ -43,12 +40,32 @@ public class WorldBoundsSystem implements KfsSystem {
             }
 
             // bottom: reset ball or emit event
-            if (pos.position.y < 0) {
+            boolean isBall = world.getComponent(e, BallComponent.class) != null;
+            if (isBall && pos.position.y < 0) {
                 pos.position.y = worldHeight / 2f;
                 pos.position.x = worldWidth / 2f;
                 vel.velocity.set(150, -150);
+
+                if (world.getEntitiesWith(BallComponent.class).size() == 1) {
+                    for (Entity paddleEntity : world.getEntitiesWith(PaddleComponent.class)) {
+                        PaddleComponent paddle = world.getComponent(paddleEntity, PaddleComponent.class);
+                        paddle.lives--;
+                        if (paddle.lives <= 0) {
+                            world.gameOver();
+                        } else {
+                            world.setInfo("Lives: " + paddle.lives);
+                        }
+                    }
+                } else {
+                    world.deleteEntity(e);
+                    continue;
+                }
             }
 
+            boolean isSurprise = world.getComponent(e, SurpriseComponent.class) != null;
+            if (isSurprise && pos.position.y < 0) {
+                world.deleteEntity(e);
+            }
         }
     }
 }

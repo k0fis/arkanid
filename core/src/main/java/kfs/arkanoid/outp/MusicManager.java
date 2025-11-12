@@ -2,6 +2,7 @@ package kfs.arkanoid.outp;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.audio.Music;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.files.FileHandle;
 
 import java.util.ArrayList;
@@ -11,6 +12,9 @@ public class MusicManager {
 
     private final List<Music> tracks = new ArrayList<>();
     private int currentTrack = 0;
+    private Sound bounceSound;
+    private Sound brickBreakSound;
+    private Sound eatSurpriseSound;
 
     public MusicManager(String folderPath) {
         // Load all .ogg files in the folder
@@ -25,6 +29,9 @@ public class MusicManager {
                 }
             }
         }
+        bounceSound = Gdx.audio.newSound(Gdx.files.internal("sounds/ball.wav"));
+        brickBreakSound = Gdx.audio.newSound(Gdx.files.internal("sounds/brick.wav"));
+        eatSurpriseSound = Gdx.audio.newSound(Gdx.files.internal("sounds/gem.wav"));
 
         // Setup next track listener
         for (Music music : tracks) {
@@ -36,6 +43,24 @@ public class MusicManager {
         if (!tracks.isEmpty()) {
             currentTrack = 0;
             tracks.get(currentTrack).play();
+        }
+    }
+
+    public void playBounceSound() {
+        if (bounceSound != null) {
+            bounceSound.play();
+        }
+    }
+
+    public void playBrickBreakSound() {
+        if (brickBreakSound != null) {
+            brickBreakSound.play();
+        }
+    }
+
+    public void playSurpriseSound() {
+        if (eatSurpriseSound != null) {
+            eatSurpriseSound.play();
         }
     }
 
@@ -56,6 +81,16 @@ public class MusicManager {
             music.dispose();
         }
         tracks.clear();
+        if (bounceSound != null) {
+            bounceSound.dispose();
+        }
+        if (brickBreakSound != null) {
+            brickBreakSound.dispose();
+        }
+        if (eatSurpriseSound != null) {
+            eatSurpriseSound.dispose();
+        }
     }
+
 }
 
