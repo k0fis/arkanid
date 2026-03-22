@@ -1,55 +1,47 @@
-package kfs.arkanoid;
+package kfs.arkanoid.ui;
 
-import com.badlogic.gdx.Application;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
-import com.badlogic.gdx.ScreenAdapter;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
-import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
-import com.badlogic.gdx.utils.viewport.ScreenViewport;
-import kfs.arkanoid.comp.PaddleComponent;
-import kfs.arkanoid.ecs.Entity;
+import com.badlogic.gdx.utils.viewport.FitViewport;
+import kfs.arkanoid.KfsConst;
+import kfs.arkanoid.KfsMain;
+import kfs.arkanoid.World;
 import kfs.arkanoid.outp.MusicManager;
 
-
-public class GameScreen extends ScreenAdapter {
+public class GameScreen extends BaseScreen {
 
     private final Stage uiStage;
-    private final Skin skin;
     private final World world;
-    private final BitmapFont font;
     private final SpriteBatch batch;
     private final MusicManager musicManager;
     private final Texture background;
-    private boolean gameOver = false;
     private boolean paused = true;
-    private boolean musicOn = false;
+    private boolean musicOn;
     private TextButton pauseBtn;
     private Label scoreLabel;
 
-    public GameScreen(float worldWidth, float worldHeight) {
-        uiStage = new Stage(new ScreenViewport());
+    public GameScreen(KfsMain game) {
+        super(game);
+        uiStage = new Stage(new FitViewport(KfsConst.WORLD_WIDTH, KfsConst.WORLD_HEIGHT));
         batch = new SpriteBatch();
-        musicManager = new MusicManager("music");
-        Gdx.input.setInputProcessor(uiStage);
-
-        skin = new Skin(Gdx.files.internal("ui/uiskin.json"));
-        font = skin.getFont("font");
+        musicManager = game.getMusicManager();
+        musicOn = musicManager.isPlaying();
         background = new Texture(Gdx.files.internal("background.png"));
 
-        world = new World(worldWidth, worldHeight, musicManager, this::gameOver, this::setInfo, this::pauseAction);
+        world = new World(KfsConst.WORLD_WIDTH, KfsConst.WORLD_HEIGHT, musicManager,
+            this::setInfo, this::pauseAction);
+        world.setGameOverCallback(this::onGameOver);
 
         createTopBar();
-
     }
 
     private void createTopBar() {
@@ -61,9 +53,9 @@ public class GameScreen extends ScreenAdapter {
         topBar.pad(6);
         topBar.defaults().pad(10);
 
-        scoreLabel = new Label("Lives: " + PaddleComponent.DEFAULT_LIVES, skin);
+        scoreLabel = new Label("Score: 0  Lives: 3", skin);
 
-        TextButton musicBtn = new TextButton("Music: OFF", skin);
+        TextButton musicBtn = new TextButton(musicOn ? "Music: ON" : "Music: OFF", skin);
         musicBtn.addListener(new ClickListener() {
             @Override
             public void clicked(com.badlogic.gdx.scenes.scene2d.InputEvent event, float x, float y) {
@@ -89,17 +81,6 @@ public class GameScreen extends ScreenAdapter {
         topBar.add(musicBtn);
         topBar.add(pauseBtn);
 
-        if (Gdx.app.getType() != Application.ApplicationType.WebGL) {
-            TextButton exitBtn = new TextButton("Exit", skin);
-            exitBtn.addListener(new ClickListener() {
-                @Override
-                public void clicked(com.badlogic.gdx.scenes.scene2d.InputEvent event, float x, float y) {
-                    Gdx.app.exit();
-                }
-            });
-            topBar.add(exitBtn);
-        }
-
         root.top();
         root.add(topBar).expandX().fillX();
     }
@@ -108,7 +89,6 @@ public class GameScreen extends ScreenAdapter {
 
     @Override
     public void render(float delta) {
-
         if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
             pauseAction();
         }
@@ -117,22 +97,24 @@ public class GameScreen extends ScreenAdapter {
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
         if (!paused) {
-            world.update(delta);
+            world.update(Math.min(delta, 0.05f));
         }
+
+        batch.setProjectionMatrix(stage.getViewport().getCamera().combined);
         batch.begin();
-        batch.draw(background, 0, 0, world.getWidth(), world.getHeight());
+        batch.draw(background, 0, 0, KfsConst.WORLD_WIDTH, KfsConst.WORLD_HEIGHT);
         world.render(batch);
 
-        if (paused){
+        if (paused) {
             blinkTimer += delta;
             Color color = (blinkTimer > 0.5) ? Color.WHITE : Color.ORANGE;
             if (blinkTimer > 1) {
                 blinkTimer = 0;
             }
-            Color c = font.getColor();
-            font.setColor(color);
-            font.draw(batch, (gameOver?"Game OVER! ":"")+"Press SPACE to play", 30, world.getHeight() - 40);
-            font.setColor(c);
+            Color c = fontSmall.getColor();
+            fontSmall.setColor(color);
+            fontSmall.draw(batch, "Press SPACE to play", 150, KfsConst.WORLD_HEIGHT - 40);
+            fontSmall.setColor(c);
         }
 
         batch.end();
@@ -142,41 +124,35 @@ public class GameScreen extends ScreenAdapter {
     }
 
     @Override
+    public void show() {
+        Gdx.input.setInputProcessor(uiStage);
+    }
+
+    @Override
     public void resize(int width, int height) {
+        stage.getViewport().update(width, height, true);
         uiStage.getViewport().update(width, height, true);
     }
 
     @Override
     public void dispose() {
+        super.dispose();
         uiStage.dispose();
         world.done();
         batch.dispose();
         background.dispose();
-        musicManager.dispose();
     }
 
     private void setInfo(String msg) {
         scoreLabel.setText(msg);
     }
 
-    private void gameOver(String message) {
-        setInfo(message);
-        gameOver = true;
-        paused = true;
+    private void onGameOver(int finalScore) {
+        game.setScreen(new GameOverScreen(game, finalScore));
     }
 
-
     public void pauseAction() {
-        if (gameOver && paused) {
-            int lives = 0;
-            for (Entity e : world.getEntitiesWith(PaddleComponent.class)) {
-                lives = world.getComponent(e, PaddleComponent.class).lives;
-                break;
-            }
-            setInfo("Lives: " + lives);
-        }
         paused = !paused;
-        gameOver = false;
         pauseBtn.setText(paused ? "Resume" : "Pause");
     }
 }

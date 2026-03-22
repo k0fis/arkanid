@@ -1,13 +1,28 @@
 package kfs.arkanoid;
 
 import com.badlogic.gdx.Game;
-import com.badlogic.gdx.Gdx;
+import kfs.arkanoid.outp.MusicManager;
+import kfs.arkanoid.ui.MainScreen;
 
-/** {@link com.badlogic.gdx.ApplicationListener} implementation shared by all platforms. */
 public class KfsMain extends Game {
+
+    private MusicManager musicManager;
 
     @Override
     public void create() {
-        setScreen(new GameScreen(Gdx.graphics.getWidth(), Gdx.graphics.getHeight()));
+        musicManager = new MusicManager("music");
+        setScreen(new MainScreen(this));
+    }
+
+    public MusicManager getMusicManager() {
+        return musicManager;
+    }
+
+    @Override
+    public void dispose() {
+        super.dispose();
+        if (musicManager != null) {
+            musicManager.dispose();
+        }
     }
 }

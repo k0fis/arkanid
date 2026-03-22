@@ -46,6 +46,13 @@ public class MusicManager {
         }
     }
 
+    public boolean isPlaying() {
+        for (Music music : tracks) {
+            if (music.isPlaying()) return true;
+        }
+        return false;
+    }
+
     public void playBounceSound() {
         if (bounceSound != null) {
             bounceSound.play();
