@@ -36,9 +36,14 @@ public class CollisionSystem implements KfsSystem {
 
                 if (ballRect.overlaps(brickRect)) {
                     vel.velocity.y *= -1;
+                    int hpBefore = brickHP.hitPoints;
                     brickHP.hitPoints -= 1;
                     musicManager.playBrickBreakSound();
                     if (brickHP.hitPoints <= 0) {
+                        // Score based on original HP: 100/200/300/500
+                        int[] brickScores = {0, 100, 200, 300, 500};
+                        int pts = hpBefore >= 1 && hpBefore <= 4 ? brickScores[hpBefore] : 100;
+                        world.addScore(pts);
                         world.deleteEntity(brick);
                         world.spawnBurst(brickPos.position.x + brickSize.width/2f,
                             brickPos.position.y + brickSize.height/2f, 12);
@@ -51,6 +56,7 @@ public class CollisionSystem implements KfsSystem {
                         }
 
                     } else {
+                        world.addScore(10);
                         world.spawnBurst(brickPos.position.x + brickSize.width/2f,
                             brickPos.position.y + brickSize.height/2f, 12/brickHP.hitPoints);
 
@@ -81,6 +87,7 @@ public class CollisionSystem implements KfsSystem {
                 Rectangle padRect = new Rectangle(padPos.position.x, padPos.position.y, padSize.width, padSize.height);
                 if (surpriseRect.overlaps(padRect)) {
                     musicManager.playSurpriseSound();
+                    world.addScore(50);
                     int surpriseIndex = world.getComponent(surprise, SurpriseComponent.class).inx;
                     world.deleteEntity(surprise);
                     world.addComponent(world.createEntity(), new SurpriseActiveComponent(surpriseIndex));

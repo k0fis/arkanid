@@ -53,7 +53,7 @@ public class WorldBoundsSystem implements KfsSystem {
                         if (paddle.lives <= 0) {
                             world.gameOver();
                         } else {
-                            world.setInfo("Lives: " + paddle.lives);
+                            world.setInfo("Score: " + paddle.score + "  Lives: " + paddle.lives);
                         }
                     }
                 } else {

@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 
 public class World extends KfsWorld {
     private static final String PARTICLE = "particle";
@@ -38,19 +39,18 @@ public class World extends KfsWorld {
 
     private final float height;
     private final float width;
-    private final Consumer<String> gameOverAction;
     private final Consumer<String> setInfoAction;
     private final Runnable pauseAction;
+    private IntConsumer gameOverCallback;
     private boolean gameOver1 = false;
     private boolean level1 = false;
     private final BrickTextAnimationSystem brickTextAnimationSystem;
 
     public World(float width, float height, MusicManager music,
-                 Consumer<String> gameOver, Consumer<String> setInfoAction, Runnable pauseAction) {
+                 Consumer<String> setInfoAction, Runnable pauseAction) {
         this.textures = new HashMap<>();
         this.height = height;
         this.width = width;
-        this.gameOverAction = gameOver;
         this.setInfoAction = setInfoAction;
         this.pauseAction = pauseAction;
 
@@ -99,7 +99,7 @@ public class World extends KfsWorld {
             deleteEntity(e);
         }
         Entity e = createEntity();
-        addComponent(e, new PositionComponent(width / 2f - 40, 40));
+        addComponent(e, new PositionComponent(width / 2f - 40, 80));
         addComponent(e, new SizeComponent(80, 16));
         addComponent(e, new VelocityComponent());
         addComponent(e, new PaddleComponent());
@@ -210,13 +210,9 @@ public class World extends KfsWorld {
         }
         if (brickTextAnimationSystem.isTimeout(6f)) {
             if (gameOver1) {
-                for (Entity brick : getEntitiesWith(BrickComponent.class)) {
-                    deleteEntity(brick);
+                if (gameOverCallback != null) {
+                    gameOverCallback.accept(getScore());
                 }
-                createPaddle();
-                createBall(true);
-                newWall();
-                gameOverAction.accept("Game Over");
             }
             if (level1) {
                 createBall(true);
@@ -262,5 +258,31 @@ public class World extends KfsWorld {
 
     public float getHeight() {
         return height;
+    }
+
+    public void setGameOverCallback(IntConsumer callback) {
+        this.gameOverCallback = callback;
+    }
+
+    public int getScore() {
+        for (Entity e : getEntitiesWith(PaddleComponent.class)) {
+            return getComponent(e, PaddleComponent.class).score;
+        }
+        return 0;
+    }
+
+    public void addScore(int points) {
+        for (Entity e : getEntitiesWith(PaddleComponent.class)) {
+            PaddleComponent paddle = getComponent(e, PaddleComponent.class);
+            paddle.score += points;
+            setInfo("Score: " + paddle.score + "  Lives: " + paddle.lives);
+        }
+    }
+
+    public int getLives() {
+        for (Entity e : getEntitiesWith(PaddleComponent.class)) {
+            return getComponent(e, PaddleComponent.class).lives;
+        }
+        return 0;
     }
 }
